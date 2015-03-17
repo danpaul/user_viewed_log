@@ -1,0 +1,27 @@
+{
+  "name": "user_viewed_log",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danpaul/user_viewed_log"
+  },
+  "author": "Dan Breczinski <pt2323@gmail.com> (https://github.com/danpaul)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danpaul/user_viewed_log/issues"
+  },
+  "homepage": "https://github.com/danpaul/user_viewed_log",
+  "dependencies": {
+    "async": "^0.9.0",
+    "underscore": "^1.8.2"
+  },
+  "devDependencies": {
+    "knex": "^0.7.6",
+    "mysql": "^2.5.5"
+  }
+}
