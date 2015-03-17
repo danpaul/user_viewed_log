@@ -3,6 +3,7 @@ var schema = {}
 var schemaDefinition = function(table){
     table.integer('user')
     table.integer('item')
+    table.integer('created').index()
     table.primary(['user', 'item'])
 }
 
