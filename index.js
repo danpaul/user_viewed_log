@@ -10,7 +10,9 @@ var DEFAULTS = {
     cronSchedule: '00 00 04 * * *',
 
     // logs for 30 days
-    keepLength: 60 * 60 * 24 * 30 
+    keepLength: 60 * 60 * 24 * 30,
+
+    knex: null
 }
 
 // options must include: knex
@@ -26,30 +28,27 @@ module.exports = function(options, callbackIn){
             return
         }
 
-        // set defaults
-        var mergedOptions = _.clone(DEFAULTS)
-        _.each(options, function(v, k){
+        _.each(DEFAULTS, function(v, k){
             if( _.has(options, k) ){
-                mergedOptions[k] = options[k]
+                self[k] = options[k]
+            } else {
+                self[k] = DEFAULTS[k]
             }
         })
 
         // set table name
-        mergedOptions.tableName = mergedOptions.tablePrefix +
-                                  mergedOptions.tableName
+        self.tableName = self.tablePrefix + self.tableName
 
         // set purge cron job
-        self.cronJob = new CronJob(mergedOptions.cronSchedule,
+        self.cronJob = new CronJob(self.cronSchedule,
                                    self.purge,
                                    true,
                                    'America/Los_Angeles')
 
-        self.tableName = mergedOptions.tableName
-        self.knex = mergedOptions.knex
         self.upsertStatement = 'INSERT IGNORE INTO `' + self.tableName +
             '` ' + '(`user`, `item`, `created`) VALUES (?, ?, ?)'
 
-        require('./schema').init(mergedOptions, function(err){
+        require('./schema').init(self, function(err){
             if( err ){ throw(err) }
         })
     }
@@ -63,6 +62,7 @@ module.exports = function(options, callbackIn){
     }
 
     this.purge = function(){
+
 
     }
 
