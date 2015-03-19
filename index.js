@@ -61,8 +61,19 @@ module.exports = function(options, callbackIn){
             .catch(callbackIn)
     }
 
-    this.purge = function(){
+    this.purge = function(callbackIn){
+        var keepLimit = getCurrentTimestamp - self.keepLength
 
+        self.knex(self.tableName)
+            .where('created', '<', keepLimit)
+            .delete()
+            .then(function(){
+                console.log('user_view_log completed DB purge operation')
+            })
+            .catch(function(err){
+                console.log('user_view_log could not complete purge.')
+                console.log(err)
+            })
 
     }
 
