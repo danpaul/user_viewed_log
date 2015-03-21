@@ -22,7 +22,7 @@ var userViewedLog = new UserViewedLog({knex: knex, tablePrefix: 'test_'})
 
 var userId = 1
 
-var numberOfInserts = 10000
+var numberOfInserts = 100000
 
 var start
 
@@ -39,7 +39,7 @@ async.waterfall([
     // add to the log
     function(callback){
         start = Date.now()
-        async.eachLimit(_.range(1, numberOfInserts), 100, function(num, callbackB){
+        async.eachLimit(_.range(1, numberOfInserts), 1, function(num, callbackB){
             userViewedLog.add(userId, num, callbackB)
         }, callback)        
     },

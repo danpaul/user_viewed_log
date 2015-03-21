@@ -19,7 +19,10 @@ var DEFAULTS = {
     getLimit: -1,
 
     // it true, inserts will be queued and inserted in batch
-    queInserts: false,
+    // Tested locally:
+    // non queued: Time to insert 100000 logs: 68.584 (arpox 1500/sec)
+    // queued 1000 inserts: Time to insert 100000 logs: 43.342 (aprox 2300/sec)
+    queInserts: true,
 
     // max items to hold in que
     queSizeLimit: 1000,
@@ -76,10 +79,8 @@ module.exports = function(options, callbackIn){
     this.add = function(userId, itemId, callbackIn){
 
         if( self.queInserts ){
-
-            self.insertQue.push([userId, itemId])
+            self.insertQue.push([userId, itemId, getCurrentTimestamp()])
             self.checkQue(callbackIn)
-
         } else {
 
             self.knex.raw(self.upsertStatement,
@@ -98,6 +99,7 @@ module.exports = function(options, callbackIn){
             Date.now() > self.queLastCleared + self.queExpiration ){
             self.flushQue(callbackIn)
         } else {
+            // setTimeout(callbackIn, 0);
             callbackIn()
         }
     }
@@ -106,6 +108,7 @@ module.exports = function(options, callbackIn){
     this.flushQue = function(callbackIn){
 
         var insertQueCopy = []
+        // var currentTimestamp = getCurrentTimestamp()
 
         _.each(self.insertQue, function(e){
             insertQueCopy.push(e.slice());
@@ -116,24 +119,23 @@ module.exports = function(options, callbackIn){
         self.queLastCleared = Date.now()
 
         self.knex.transaction(function(trx) {
-
-            _.each(insertQueCopy, function(e){
-
-                self.knex(self.tableName)
-                    .transacting(trx)
-                    .insert({ user: e[0], item: e[1] })
-                    .then(trx.commit)
-                    .catch(trx.rollback);
-                    // .then(function(){ callbackIn() }
-                    // .catch(callbackIn)
-            })
+              return Promise.map(insertQueCopy, function(log) {
+                return trx
+                    .insert({
+                        user: log[0],
+                        item: log[1],
+                        created: log[2]
+                    })
+                    .into(self.tableName)
+              });
         })
-        .then(function(){ callbackIn() })
-        .catch(callbackIn)
-
+        .then(function(){ callbackIn(); })
+        .catch( callbackIn )
 
     }
 
+    // gets all items in users log within `keepLength` time limit
+    // passes back an array of ids
     this.get = function(userId, callbackIn){
         var cutoff = getCurrentTimestamp() - self.keepLength
         var getQuery = self.knex(self.tableName)
@@ -147,21 +149,21 @@ module.exports = function(options, callbackIn){
 
         getQuery.catch = callbackIn
 
-        /** var start = Date.now() */
+        var start = Date.now() 
 
         getQuery.then(function(rows){
 
-            /**
             var finish = Date.now()
             console.log(rows.length)
             console.log(((finish - start) / 1000))
-            */
+            
 
             callbackIn(_.map(rows, function(r){ return r.item; }));
 
         })
     }
 
+    // purges expired logs from the DB
     this.purge = function(callbackIn){
         var keepLimit = getCurrentTimestamp - self.keepLength
 
@@ -178,6 +180,7 @@ module.exports = function(options, callbackIn){
 
     }
 
+    // runs after the cron is complete
     this.purgeComplete = function(err){
         if( err ){ console.log(err)
         } else { console.log('User view log purge complete.') }
