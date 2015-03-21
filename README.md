@@ -6,13 +6,14 @@ user_viewed_log takes an initialized [Knex](http://knexjs.org/) object. I origin
 
 user_viewed_log supports basic add/get logging, automatic cleanup (it deletes logs that have expired) and batch insert/queueing.
 
-user_viewed_log has been testedish. I maded it quickly and did some basic testing but it's not exactly battle hardened yet. Use at your own risk!
+user_viewed_log has been testedish. I made it quickly and did some basic testing but it's not exactly battle hardened yet. Use at your own risk!
 
 ## Exampleataurial
 
 ```Javascript
 var _ = require('underscore')
 var async = require('async')
+var knex = require('knex')
 
 var dbCreds = {
     client: 'mysql',
