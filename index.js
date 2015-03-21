@@ -10,13 +10,12 @@ var DEFAULTS = {
     // run cron every day at 4 AM
     cronSchedule: '00 00 04 * * *',
 
-    // logs for 30 days
+    // keep logs for 30 days
     keepLength: 60 * 60 * 24 * 30,
 
     // The maximum number of logs to return
     // If -1, there is no limit
-    // getLimit: 10000,
-    getLimit: -1,
+    getLimit: 10000,
 
     // it true, inserts will be queued and inserted in batch
     // Tested locally:
@@ -160,17 +159,12 @@ module.exports = function(options, callbackIn){
 
         getQuery.catch = callbackIn
 
-        var start = Date.now() 
-
+        // var start = Date.now() 
         getQuery.then(function(rows){
-
             var finish = Date.now()
-            console.log(rows.length)
-            console.log(((finish - start) / 1000))
-            
-
-            callbackIn(_.map(rows, function(r){ return r.item; }));
-
+            // console.log(rows.length)
+            // console.log(((finish - start) / 1000))
+            callbackIn(_.map(rows, function(r){ return r.item; }))
         })
     }
 

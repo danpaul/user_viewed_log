@@ -65,7 +65,6 @@ These setting can get passed on initialization (only knex is required), below ar
 
 ```Javascript
 {
-
     tablePrefix: '',
     tableName: 'user_viewed',
     
@@ -77,8 +76,7 @@ These setting can get passed on initialization (only knex is required), below ar
 
     // The maximum number of logs to return
     // If -1, there is no limit
-    // getLimit: 10000,
-    getLimit: -1,
+    getLimit: 10000,
 
     // it true, inserts will be queued and inserted in batch
     // Tested locally:
