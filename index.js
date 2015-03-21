@@ -20,7 +20,7 @@ var DEFAULTS = {
 
     // it true, inserts will be queued and inserted in batch
     // Tested locally:
-    // non queued: Time to insert 100000 logs: 68.584 (arpox 1500/sec)
+    // non queued: Time to insert 100000 logs: 68.584 (aprox 1500/sec)
     // queued 1000 inserts: Time to insert 100000 logs: 43.342 (aprox 2300/sec)
     queInserts: true,
 
@@ -68,6 +68,10 @@ module.exports = function(options, callbackIn){
                                    true,
                                    'America/Los_Angeles')
 
+        if( self.queInserts ){
+            setInterval(self.intervalQueCheck, self.queExpiration)
+        }
+
         self.upsertStatement = 'INSERT IGNORE INTO `' + self.tableName +
             '` ' + '(`user`, `item`, `created`) VALUES (?, ?, ?)'
 
@@ -104,11 +108,18 @@ module.exports = function(options, callbackIn){
         }
     }
 
+    // function called to check if que need to get cleared
+    this.intervalQueCheck = function(){
+        self.checkQue(function(err){
+            if( err ){ console.log(err) }
+            else{ console.log('user_viewed_log que check success...') }
+        })
+    }
+
     // clears the queue and resets timer
     this.flushQue = function(callbackIn){
 
         var insertQueCopy = []
-        // var currentTimestamp = getCurrentTimestamp()
 
         _.each(self.insertQue, function(e){
             insertQueCopy.push(e.slice());
