@@ -1,6 +1,8 @@
 var _ = require('underscore')
 var async = require('async')
 
+var TIMING = true
+
 var dbCreds = {
     client: 'mysql',
     connection: {
@@ -20,6 +22,10 @@ var userViewedLog = new UserViewedLog({knex: knex, tablePrefix: 'test_'})
 
 var userId = 1
 
+var numberOfInserts = 10000
+
+var start
+
 async.waterfall([
 
     // clear table
@@ -32,9 +38,26 @@ async.waterfall([
 
     // add to the log
     function(callback){
-        async.each(_.range(1, 11), function(num, callbackB){
+        start = Date.now()
+        async.eachLimit(_.range(1, numberOfInserts), 100, function(num, callbackB){
             userViewedLog.add(userId, num, callbackB)
-        })        
+        }, callback)        
+    },
+
+    // get logged items
+    function(callback){
+        if( TIMING ){
+            console.log('Time to insert ' +
+                        numberOfInserts + ' logs: ' +
+                        (Date.now() - start) / 1000)            
+        }
+
+
+        userViewedLog.get(userId, function(err, userIds){
+            // console.log(userIds)
+            callback()
+        })
+// callback()
     }
 
 

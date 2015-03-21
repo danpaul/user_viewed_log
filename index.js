@@ -1,4 +1,5 @@
 var _ = require('underscore')
+var Promise = require('bluebird')
 var CronJob = require('cron').CronJob
 
 var DEFAULTS = {
@@ -11,6 +12,20 @@ var DEFAULTS = {
 
     // logs for 30 days
     keepLength: 60 * 60 * 24 * 30,
+
+    // The maximum number of logs to return
+    // If -1, there is no limit
+    // getLimit: 10000,
+    getLimit: -1,
+
+    // it true, inserts will be queued and inserted in batch
+    queInserts: false,
+
+    // max items to hold in que
+    queSizeLimit: 1000,
+
+    // max time in milliseconds to hold items in que
+    queExpiration: 10000,
 
     knex: null
 }
@@ -36,6 +51,11 @@ module.exports = function(options, callbackIn){
             }
         })
 
+        if( self.queInserts ){
+            self.insertQue = []
+            self.queLastCleared = Date.now()
+        }
+
         // set table name
         self.tableName = self.tablePrefix + self.tableName
 
@@ -55,10 +75,91 @@ module.exports = function(options, callbackIn){
 
     this.add = function(userId, itemId, callbackIn){
 
-        self.knex.raw(self.upsertStatement,
-                      [userId, itemId, getCurrentTimestamp()])
-            .then(function(){ callbackIn() })
-            .catch(callbackIn)
+        if( self.queInserts ){
+
+            self.insertQue.push([userId, itemId])
+            self.checkQue(callbackIn)
+
+        } else {
+
+            self.knex.raw(self.upsertStatement,
+                          [userId, itemId, getCurrentTimestamp()])
+                .then(function(){ callbackIn() })
+                .catch(callbackIn)
+
+        }
+    }
+
+    // checks if the timer has expired or if the size limit of the que has been
+    //  exceided. flushes que if so
+    this.checkQue = function(callbackIn){
+
+        if( self.insertQue.length > self.queSizeLimit ||
+            Date.now() > self.queLastCleared + self.queExpiration ){
+            self.flushQue(callbackIn)
+        } else {
+            callbackIn()
+        }
+    }
+
+    // clears the queue and resets timer
+    this.flushQue = function(callbackIn){
+
+        var insertQueCopy = []
+
+        _.each(self.insertQue, function(e){
+            insertQueCopy.push(e.slice());
+        })
+
+        self.insertQue = []
+
+        self.queLastCleared = Date.now()
+
+        self.knex.transaction(function(trx) {
+
+            _.each(insertQueCopy, function(e){
+
+                self.knex(self.tableName)
+                    .transacting(trx)
+                    .insert({ user: e[0], item: e[1] })
+                    .then(trx.commit)
+                    .catch(trx.rollback);
+                    // .then(function(){ callbackIn() }
+                    // .catch(callbackIn)
+            })
+        })
+        .then(function(){ callbackIn() })
+        .catch(callbackIn)
+
+
+    }
+
+    this.get = function(userId, callbackIn){
+        var cutoff = getCurrentTimestamp() - self.keepLength
+        var getQuery = self.knex(self.tableName)
+                           .select(['item'])
+                           .where('user', userId)
+                           .andWhere('created', '>', cutoff)
+
+        if( self.getLimit >= 0 ){
+            getQuery.limit(self.getLimit)
+        }
+
+        getQuery.catch = callbackIn
+
+        /** var start = Date.now() */
+
+        getQuery.then(function(rows){
+
+            /**
+            var finish = Date.now()
+            console.log(rows.length)
+            console.log(((finish - start) / 1000))
+            */
+
+            callbackIn(_.map(rows, function(r){ return r.item; }));
+
+        })
     }
 
     this.purge = function(callbackIn){
